@@ -694,6 +694,7 @@ cdk.out
 
 ### local exclude ###
 **/traffic_stats/**
+**/data/**
 **/logs/**
 *.pid
 *.yaml

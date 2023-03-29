@@ -81,6 +81,22 @@ The AWS Lambda function gathers the same stats via the same mechanism, however t
 
 The Lambda function is run on a period basis triggered by an Eventbridge schedule.
 
+There is also a dbdata.py app in the ./graph_data folder which will fetch the data from the DynamoDB table and graph it, the graph will be saved as a pdf in the ./graph_data/data folder. 
+
+```
+Command line options:
+	--list		   List the GitHub repositories
+	--update	Invoke the Lambda function to update the statistics
+	--run		  Run the data visualization
+	--help		Print this help message
+```
+
+The graphed data will show in a local browser and look similar to:
+
+![GitHub Stats App View](./images/DataGraph.png)
+
+
+
 After cloning this project, first:
 
 - Activate the Python virtual environment

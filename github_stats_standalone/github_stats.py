@@ -3,6 +3,7 @@ import argparse
 import json
 import os
 import subprocess
+import sys
 import time
 import logging
 import webbrowser
@@ -43,12 +44,16 @@ parser = argparse.ArgumentParser(
     description=f"{app_name}",
 )
 
-group = parser.add_mutually_exclusive_group(required=False)
-group.add_argument("--run", "-r", action="store_true", help="Run Flask App and open browser")
-parser.add_argument("--create", "-c", action="store_true", help="Create a repo list YAML file")
-parser.add_argument("--update", "-u", action="store_true", help="Update repo list and stats")
-parser.add_argument("--shutdown", "-s", action="store_true", help="Shutdown Flask App")
-group.add_argument("--list", "-l", action="store_true", help="List Repos")
+action_group = parser.add_mutually_exclusive_group(required=False)
+action_group.add_argument("--create", "-c", action="store_true", help="Create a repo list YAML file")
+action_group.add_argument("--run", "-r", action="store_true", help="Run Flask App and open browser")
+action_group.add_argument("--update", "-u", action="store_true", help="Update repo list and stats")
+action_group.add_argument("--shutdown", "-s", action="store_true", help="Shutdown Flask App")
+action_group.add_argument("--list", "-l", action="store_true", help="List Repos")
+
+control_group = parser.add_argument_group("control options")
+control_group.add_argument("--daemon", "-d", action="store_true", help="Run as a daemon")
+
 
 args = parser.parse_args()
 
@@ -138,6 +143,8 @@ def create_repo_list(repo_config):
     with open(repo_config, "w") as f:
         f.write("---\n")
         f.write(yaml_doc)
+
+    print(f"Created {repo_config}")
 
     return yaml_doc
 
@@ -372,7 +379,7 @@ def run_and_display(shutdown):
 
     # Start the Dash app as a background process
     print("Starting GitHub Stats App...")
-    cmd = ["python3", "github_stats.py"]
+    cmd = ["python3", "github_stats.py", "--daemon"]
     proc = subprocess.Popen(cmd)
 
     # Wait for the app to start
@@ -385,6 +392,18 @@ def run_and_display(shutdown):
     # Write process PID to file
     with open(pid_file, "w") as f:
         f.write(str(proc.pid))
+
+
+def display_usage():
+    print("Usage: github_stats.py [options]")
+    print("Options:")
+    print("  -h, --help\t\t\tDisplay this help message")
+    print("  -l, --list\t\t\tList all repos in the repo YAML file")
+    print("  -u, --update\t\t\tUpdate the stats for all repos in the repo YAML file")
+    print("  -r, --run\t\t\tRun the Dash app")
+    print("  -s, --shutdown\t\t\tShutdown the Dash app")
+    print("  -c, --create\t\t\tCreate the repo YAML file")
+    sys.exit(1)
 
 
 if __name__ == "__main__":
@@ -401,5 +420,7 @@ if __name__ == "__main__":
         run_and_display(shutdown=True)
     elif args.create:
         create_repo_list(repo_yaml_file)
-    else:
+    elif args.daemon:
         run_dash_app()
+    else:
+        display_usage()

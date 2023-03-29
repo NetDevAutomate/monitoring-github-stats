@@ -1,23 +1,15 @@
-from aws_cdk import Stack
 import aws_cdk.aws_dynamodb as dynamodb
 import aws_cdk.aws_events as _events
 import aws_cdk.aws_events_targets as _targets
 import aws_cdk.aws_lambda as _lambda
 from aws_cdk import Stack, Duration
 from constructs import Construct
-import logging
-import boto3
-from botocore.exceptions import WaiterError
-import sys
-# from aws_cdk import CfnInput, CfnOutput
-logger = logging.getLogger(__name__)
+
 
 class GithubStatsCdkStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, org_name: str, team_name: str, access_token: str,
                  platform: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
-
-        region = Stack.of(self).region
 
         # Create DynamoDB table to store stats
         table = dynamodb.Table(
@@ -48,7 +40,6 @@ class GithubStatsCdkStack(Stack):
             timeout=Duration.minutes(5),
         )
 
-        lambda_function_arn = func.function_arn
         # Add permission for Lambda to access DynamoDB table
         table.grant_read_write_data(func)
 
@@ -59,5 +50,3 @@ class GithubStatsCdkStack(Stack):
             schedule=_events.Schedule.cron(minute="0"),
         )
         rule.add_target(_targets.LambdaFunction(func))
-
-        print(f'Deploying in:\n{region}')
