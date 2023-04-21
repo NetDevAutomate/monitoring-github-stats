@@ -91,7 +91,7 @@ def update_stats(invoke_lambda):
     thread.join()
     response_payload = response_queue.get()
     response_dict = json.loads(response_payload)
-
+    print(response_dict)
     if response_dict["statusCode"] == 200 and response_dict["body"] == "\"Stats updated successfully.\"":
         console.print("[green]Success[/green], stats updated")
     else:
@@ -128,7 +128,7 @@ def visualize_data(ddb_table_name):
         uniques = int(d["uniques"])
 
         stat_counts[repo][stat_type] += count
-        type_uniques[repo][d["type"]] += uniques
+        type_uniques[repo][d["stat_type"]] += uniques
 
     # extract the aggregated counts and uniques for each repository
     clones_counts = [stat_counts[repo]["clones"] for repo in repos]

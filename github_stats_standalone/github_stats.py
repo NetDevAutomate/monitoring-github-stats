@@ -206,7 +206,13 @@ def fetch_traffic_stats(repo, stat_type):
 
     if os.path.exists(data_file_path) and os.path.getsize(data_file_path) > 0:
         with open(data_file_path, "r") as f:
-            data = json.load(f)
+            loaded_data = json.load(f)
+            data = {
+                stat_type: {
+                    item["timestamp"]: {"count": item["count"], "uniques": item["uniques"]}
+                    for item in loaded_data[stat_type]
+                }
+            }
     else:
         data = {}
 
@@ -216,19 +222,40 @@ def fetch_traffic_stats(repo, stat_type):
         new_data = response.json()
 
         if stat_type not in data:
-            data[stat_type] = new_data[stat_type]
+            data[stat_type] = {
+                item["timestamp"]: {"count": item["count"], "uniques": item["uniques"]}
+                for item in new_data[stat_type]
+            }
         else:
             for item in new_data[stat_type]:
-                if item not in data[stat_type]:
-                    data[stat_type].append(item)
+                timestamp = item["timestamp"]
+                if timestamp not in data[stat_type]:
+                    data[stat_type][timestamp] = {
+                        "count": item["count"],
+                        "uniques": item["uniques"],
+                    }
+                else:
+                    data[stat_type][timestamp]["count"] += item["count"]
+                    data[stat_type][timestamp]["uniques"] += item["uniques"]
+
+        # Convert the dictionary back to the original list structure before saving to the JSON file
+        output_data = {
+            stat_type: [
+                {"timestamp": k, "count": v["count"], "uniques": v["uniques"]}
+                for k, v in data[stat_type].items()
+            ]
+        }
 
         with open(data_file_path, "w") as f:
-            json.dump(data, f)
+            json.dump(output_data, f)
 
-        return data
+        return output_data
     except requests.exceptions.RequestException as e:
         print(f"Error fetching {stat_type} data for {repo}: {e}")
         return data
+
+
+
 
 
 # Dash functions
@@ -238,6 +265,7 @@ def create_chart(repo, stat_type, data):
     """
     timestamps = []
     for item in data[stat_type]:
+        print(item)
         if "timestamp" in item:
             try:
                 timestamp = datetime.strptime(item["timestamp"], "%Y-%m-%dT%H:%M:%SZ")

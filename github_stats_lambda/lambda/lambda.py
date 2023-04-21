@@ -5,12 +5,37 @@ from datetime import datetime
 
 import requests
 from boto3 import resource
+from botocore.exceptions import ClientError
 from github import Github
 
 logging.basicConfig()
 logger = logging.getLogger("GitHubStats")
 logger.setLevel(logging.INFO)
 
+
+def create_table_if_not_exists(dynamodb_resource, table_name):
+    try:
+        table = dynamodb_resource.create_table(
+            TableName=table_name,
+            KeySchema=[
+                {"AttributeName": "repo_name", "KeyType": "HASH"},
+                {"AttributeName": "stat_type", "KeyType": "RANGE"},
+            ],
+            AttributeDefinitions=[
+                {"AttributeName": "repo_name", "AttributeType": "S"},
+                {"AttributeName": "stat_type", "AttributeType": "S"},
+            ],
+            ProvisionedThroughput={
+                "ReadCapacityUnits": 5,
+                "WriteCapacityUnits": 5,
+            },
+        )
+        table.wait_until_exists()
+    except ClientError as e:
+        if e.response["Error"]["Code"] != "ResourceInUseException":
+            raise
+        table = dynamodb_resource.Table(table_name)
+    return table
 
 def lambda_handler(event, context):
     date_today = datetime.today().strftime("%Y-%m-%d")
@@ -22,7 +47,15 @@ def lambda_handler(event, context):
 
     # Get DynamoDB table resource
     dynamodb_resource = resource("dynamodb", region_name="eu-west-1")
-    table = dynamodb_resource.Table(table_name)
+
+    try:
+        table = dynamodb_resource.Table(table_name)
+        table.load()
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "ResourceNotFoundException":
+            table = create_table_if_not_exists(dynamodb_resource, table_name)
+        else:
+            raise
 
     # Get all repos in a team
     repos = get_all_repos(access_token, team_name, org_name)
@@ -38,16 +71,27 @@ def lambda_handler(event, context):
             if data:
                 for item in data:
                     item["repo_name"] = repo
-                    item["stat_type"] = data[0]["type"]
-                    item["timestamp"] = datetime.strptime(
+                    item["stat_type"] = item["type"]
+                    item["date"] = datetime.strptime(
                         item["timestamp"], "%Y-%m-%dT%H:%M:%SZ"
-                    ).isoformat()
-                    table.put_item(Item=item)
+                    ).strftime("%Y-%m-%d")
+
+                    # Update item in the DynamoDB table
+                    table.put_item(
+                        Item={
+                            "repo_name": item["repo_name"],
+                            "stat_type": item["stat_type"],
+                            "count": item["count"],
+                            "uniques": item["uniques"],
+                            "date": item["date"]
+                        }
+                    )
 
     return {
         "statusCode": 200,
         "body": json.dumps("Stats updated successfully."),
     }
+
 
 
 # Function to get all repos in a team
