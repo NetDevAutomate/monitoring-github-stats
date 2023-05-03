@@ -45,14 +45,24 @@ parser = argparse.ArgumentParser(
 )
 
 action_group = parser.add_mutually_exclusive_group(required=False)
-action_group.add_argument("--create", "-c", action="store_true", help="Create a repo list YAML file")
-action_group.add_argument("--run", "-r", action="store_true", help="Run Flask App and open browser")
-action_group.add_argument("--update", "-u", action="store_true", help="Update repo list and stats")
-action_group.add_argument("--shutdown", "-s", action="store_true", help="Shutdown Flask App")
+action_group.add_argument(
+    "--create", "-c", action="store_true", help="Create a repo list YAML file"
+)
+action_group.add_argument(
+    "--run", "-r", action="store_true", help="Run Flask App and open browser"
+)
+action_group.add_argument(
+    "--update", "-u", action="store_true", help="Update repo list and stats"
+)
+action_group.add_argument(
+    "--shutdown", "-s", action="store_true", help="Shutdown Flask App"
+)
 action_group.add_argument("--list", "-l", action="store_true", help="List Repos")
 
 control_group = parser.add_argument_group("control options")
-control_group.add_argument("--daemon", "-d", action="store_true", help="Run as a daemon")
+control_group.add_argument(
+    "--daemon", "-d", action="store_true", help="Run as a daemon"
+)
 
 
 args = parser.parse_args()
@@ -85,18 +95,28 @@ def create_app(repos_config):
 
     dash_app.layout = html.Div(
         [
-            html.H1(f"{app_name}",
-                    style={'textAlign': 'center', 'color': '#2986cc'}
-                    ),
+            html.H1(f"{app_name}", style={"textAlign": "center", "color": "#2986cc"}),
             dbc.Container(
                 [
-                    html.Div([create_chart(repo, "views", fetch_traffic_stats(repo, "views"))])
+                    html.Div(
+                        [
+                            create_chart(
+                                repo, "views", fetch_traffic_stats(repo, "views")
+                            )
+                        ]
+                    )
                     for repo in repos
                 ]
             ),
             dbc.Container(
                 [
-                    html.Div([create_chart(repo, "clones", fetch_traffic_stats(repo, "clones"))])
+                    html.Div(
+                        [
+                            create_chart(
+                                repo, "clones", fetch_traffic_stats(repo, "clones")
+                            )
+                        ]
+                    )
                     for repo in repos
                 ]
             ),
@@ -209,7 +229,10 @@ def fetch_traffic_stats(repo, stat_type):
             loaded_data = json.load(f)
             data = {
                 stat_type: {
-                    item["timestamp"]: {"count": item["count"], "uniques": item["uniques"]}
+                    item["timestamp"]: {
+                        "count": item["count"],
+                        "uniques": item["uniques"],
+                    }
                     for item in loaded_data[stat_type]
                 }
             }
@@ -255,9 +278,6 @@ def fetch_traffic_stats(repo, stat_type):
         return data
 
 
-
-
-
 # Dash functions
 def create_chart(repo, stat_type, data):
     """
@@ -265,7 +285,6 @@ def create_chart(repo, stat_type, data):
     """
     timestamps = []
     for item in data[stat_type]:
-        print(item)
         if "timestamp" in item:
             try:
                 timestamp = datetime.strptime(item["timestamp"], "%Y-%m-%dT%H:%M:%SZ")

@@ -8,6 +8,7 @@ import typing
 import webbrowser
 from queue import Queue
 from time import sleep, time
+import datetime
 
 import boto3
 import matplotlib.pyplot as plt
@@ -121,14 +122,19 @@ def visualize_data(ddb_table_name):
     type_uniques = {repo: {"clones": 0, "views": 0} for repo in repos}
 
     # iterate over the data and aggregate the counts and uniques for each repository
+    # iterate over the data and aggregate the counts and uniques for each repository
     for d in repo_data:
         repo = d["repo_name"]
         stat_type = d["stat_type"]
+
+        if "_" in stat_type:
+            _, stat_type = stat_type.split("_", 1)
+
         count = int(d["count"])
         uniques = int(d["uniques"])
 
         stat_counts[repo][stat_type] += count
-        type_uniques[repo][d["stat_type"]] += uniques
+        type_uniques[repo][stat_type] += uniques
 
     # extract the aggregated counts and uniques for each repository
     clones_counts = [stat_counts[repo]["clones"] for repo in repos]
@@ -137,7 +143,7 @@ def visualize_data(ddb_table_name):
     views_uniques = [type_uniques[repo]["views"] for repo in repos]
 
     # set the x-axis tick labels to be the repository names
-    x_labels = [repos.split("/")[1] for repos in repos]
+    x_labels = [repo.split("/")[1] if "/" in repo else repo for repo in repos]
 
     # set the width of each bar
     width = 0.2
@@ -147,6 +153,9 @@ def visualize_data(ddb_table_name):
     x_pos_clones_uniques = x_pos_clones_counts + width
     x_pos_views_counts = x_pos_clones_counts + 2 * width
     x_pos_views_uniques = x_pos_clones_counts + 3 * width
+
+    # get the current date and format it
+    current_date = datetime.datetime.now().strftime("%d-%m-%Y")
 
     # plot the bar chart
     fig, ax = plt.subplots(figsize=(20, 8))
@@ -184,7 +193,7 @@ def visualize_data(ddb_table_name):
     )
     ax.set_ylabel("Count", wrap=True)
     ax.set_xlabel("Repository Name", wrap=True, fontsize=14, weight='bold', color='blue')
-    ax.set_title("GitHub Repository Stats", wrap=True, fontsize=14, weight='bold', color='blue')
+    ax.set_title(f"GitHub Repository Stats as of {current_date}", wrap=True, fontsize=14, weight='bold', color='blue')
 
     # add a legend
     ax.legend()
@@ -195,7 +204,8 @@ def visualize_data(ddb_table_name):
     ax.tick_params(axis="x", which="major", labelsize=8)
 
     # adjust the layout to fit the legend
-    plt.subplots_adjust(right=0.85, left=0.1, bottom=0.3)
+    # plt.subplots_adjust(right=0.85, left=0.1, bottom=0.3)
+    plt.subplots_adjust(left=0.2, right=0.85, bottom=0.4, top=0.9)
     plt.savefig(config.OUTPUT_FILE)
 
     # open the image in the default browser

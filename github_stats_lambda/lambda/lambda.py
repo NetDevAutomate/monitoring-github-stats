@@ -2,6 +2,7 @@ import json
 import logging
 import os
 from datetime import datetime
+from decimal import Decimal
 
 import requests
 from boto3 import resource
@@ -76,16 +77,35 @@ def lambda_handler(event, context):
                         item["timestamp"], "%Y-%m-%dT%H:%M:%SZ"
                     ).strftime("%Y-%m-%d")
 
-                    # Update item in the DynamoDB table
-                    table.put_item(
-                        Item={
+                    # Check if item already exists in the DynamoDB table
+                    existing_item = table.get_item(
+                        Key={
                             "repo_name": item["repo_name"],
-                            "stat_type": item["stat_type"],
-                            "count": item["count"],
-                            "uniques": item["uniques"],
-                            "date": item["date"]
+                            "stat_type": f"{item['date']}_{item['stat_type']}"
                         }
-                    )
+                    ).get("Item")
+
+                    if existing_item:
+                        # Update existing item in the DynamoDB table
+                        table.update_item(
+                            Key={
+                                "repo_name": item["repo_name"],
+                                "stat_type": f"{item['date']}_{item['stat_type']}"
+                            },
+                            UpdateExpression="SET #count = #count + :count, #uniques = #uniques + :uniques",
+                            ExpressionAttributeNames={
+                                "#count": "count",
+                                "#uniques": "uniques"
+                            },
+                            ExpressionAttributeValues={
+                                ":count": Decimal(str(item["count"])),
+                                ":uniques": Decimal(str(item["uniques"]))
+                            },
+                            ReturnValues="UPDATED_NEW"
+                        )
+                    else:
+                        # Put new item in the DynamoDB table
+                        table.put_item(Item=item)
 
     return {
         "statusCode": 200,
